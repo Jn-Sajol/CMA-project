@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  name              String
+  phone             String    @unique
+  email             String?   @unique
+  password          String?
+  photoUrl          String?
+  bio               String?   @db.VarChar(300)
+  bloodGroup        BloodGroup
+  city              String
+  area              String?
+  profession        Profession
+  professionCustom  String?
+  workplace         String
+  helpSectors       HelpSector[]
+  customHelpSectors String[]    @default([])
+  birthdate         DateTime?
+  lastDonationDate  DateTime?
+  availableAfter    DateTime?   // auto-set: lastDonationDate + 4 months
+  fcmToken          String?
+  whatsappLink      String?
+  role              Role      @default(MEMBER)
+  verified          Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  bloodRequests     BloodRequest[]
+  sosRequests       SosRequest[]
+  notices           Notice[]
+  jobPosts          JobPost[]
+  fundTransactions        FundTransaction[] @relation("UserFundTransactions")
+  createdFundTransactions FundTransaction[] @relation("FundCreator")
+  events                  Event[]
+  rsvps                   EventRSVP[]
+}
+
+model BloodRequest {
+  id            String        @id @default(cuid())
+  bloodGroup    BloodGroup
+  hospital      String
+  patientGender String?
+  patientAge    Int?
+  contactNumber String
+  urgency       Urgency       @default(NORMAL)
+  note          String?       @db.VarChar(200)
+  status        RequestStatus @default(OPEN)
+  expiresAt     DateTime      // createdAt + 72 hours
+  createdAt     DateTime      @default(now())
+  requesterId   String
+  requester     User          @relation(fields: [requesterId], references: [id])
+}
+
+model SosRequest {
+  id            String      @id @default(cuid())
+  sosType       SosType
+  description   String      @db.VarChar(280)
+  city          String
+  contactNumber String
+  status        RequestStatus @default(OPEN)
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+  requesterId   String
+  requester     User        @relation(fields: [requesterId], references: [id])
+}
+
+model Notice {
+  id          String      @id @default(cuid())
+  title       String
+  body        String
+  postType    PostType    @default(INFO)
+  imageUrl    String?
+  pinned      Boolean     @default(false)
+  viewCount   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  authorId    String
+  author      User        @relation(fields: [authorId], references: [id])
+}
+
+model JobPost {
+  id          String      @id @default(cuid())
+  category    JobCategory
+  title       String
+  description String      @db.VarChar(500)
+  profession  Profession?
+  createdAt   DateTime    @default(now())
+  authorId    String
+  author      User        @relation(fields: [authorId], references: [id])
+}
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  O_POS
+  O_NEG
+  AB_POS
+  AB_NEG
+}
+
+enum Profession {
+  DOCTOR
+  ENGINEER
+  LAWYER
+  TEACHER
+  BUSINESS
+  STUDENT
+  GOVERNMENT
+  OTHER
+}
+
+enum HelpSector {
+  MEDICAL
+  LEGAL
+  TECH
+  FINANCE
+  TRANSPORT
+  EDUCATION
+  CONSTRUCTION
+  OTHER
+}
+
+enum Role {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum Urgency {
+  CRITICAL
+  NORMAL
+}
+
+enum RequestStatus {
+  OPEN
+  FULFILLED
+  EXPIRED
+}
+
+enum SosType {
+  MEDICAL
+  BLOOD
+  FINANCIAL
+  TRANSPORT
+  LEGAL
+  OTHER
+}
+
+enum PostType {
+  NOTICE
+  EVENT
+  IMPORTANT
+  INFO
+}
+
+enum JobCategory {
+  JOB_REFERRAL
+  PROFESSIONAL_HELP
+  GENERAL
+}
+
+model FundTransaction {
+  id          String          @id @default(cuid())
+  type        TransactionType
+  amount      Float
+  note        String?
+  memberId    String?
+  member      User?           @relation("UserFundTransactions", fields: [memberId], references: [id])
+  createdBy   String
+  creator     User            @relation("FundCreator", fields: [createdBy], references: [id])
+  createdAt   DateTime        @default(now())
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  location    String
+  createdAt   DateTime    @default(now())
+  authorId    String
+  author      User        @relation(fields: [authorId], references: [id])
+  rsvps       EventRSVP[]
+}
+
+model EventRSVP {
+  id        String     @id @default(cuid())
+  status    RSVPStatus
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id])
+  @@unique([userId, eventId])
+}
+
+enum RSVPStatus {
+  GOING
+  NOT_GOING
+  MAYBE
+}
