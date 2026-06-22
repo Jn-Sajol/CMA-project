@@ -44,11 +44,11 @@ export async function POST(req: Request) {
     const userId = (session.user as any).id;
     const body = await req.json();
 
-    const { category, title, description, profession } = body;
+    const { category, title, description, profession, contactInfo } = body;
 
-    if (!category || !title || !description) {
+    if (!category || !title || !description || !contactInfo) {
       return NextResponse.json(
-        { error: "ক্যাটাগরি, শিরোনাম এবং বিবরণ আবশ্যক" },
+        { error: "ক্যাটাগরি, শিরোনাম, বিবরণ এবং যোগাযোগের তথ্য আবশ্যক" },
         { status: 400 }
       );
     }
@@ -93,6 +93,7 @@ export async function POST(req: Request) {
         description,
         profession: professionEnum,
         authorId: userId,
+        contactInfo,
       },
       include: {
         author: {

@@ -93,6 +93,7 @@ model JobPost {
   createdAt   DateTime    @default(now())
   authorId    String
   author      User        @relation(fields: [authorId], references: [id])
+  contactInfo String      @default("")
 }
 
 enum BloodGroup {

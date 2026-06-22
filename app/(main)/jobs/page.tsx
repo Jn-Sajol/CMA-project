@@ -23,6 +23,7 @@ type JobPost = {
   createdAt: string;
   authorId: string;
   author: Author;
+  contactInfo: string;
 };
 
 const CATEGORIES = [
@@ -66,6 +67,7 @@ export default function JobsPage() {
     title: "",
     description: "",
     profession: "",
+    contactInfo: "",
   });
 
   const fetchPosts = async () => {
@@ -85,6 +87,17 @@ export default function JobsPage() {
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  // Pre-fill contactInfo with logged-in user's phone number
+  useEffect(() => {
+    if (session?.user) {
+      const userPhone = (session.user as any).phone || "";
+      setForm((prev) => ({
+        ...prev,
+        contactInfo: prev.contactInfo || userPhone,
+      }));
+    }
+  }, [session]);
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,11 +119,13 @@ export default function JobsPage() {
 
       // Success
       setIsModalOpen(false);
+      const userPhone = (session?.user as any)?.phone || "";
       setForm({
         category: "JOB_REFERRAL",
         title: "",
         description: "",
         profession: "",
+        contactInfo: userPhone,
       });
       setSuccess("পোস্টটি সফলভাবে পাবলিশ হয়েছে! 🎉");
       setTimeout(() => setSuccess(""), 4000);
@@ -186,13 +201,34 @@ export default function JobsPage() {
     return `https://wa.me/${cleaned}?text=${text}`;
   };
 
+  const getContactAction = (contact: string) => {
+    const trimmed = contact.trim();
+    // Check if it looks like an email
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+    if (isEmail) {
+      return {
+        href: `mailto:${trimmed}`,
+        label: "📧 ইমেইল করুন",
+        type: "email",
+      };
+    }
+
+    // Otherwise assume it is a phone number
+    const cleanedPhone = trimmed.replace(/[\s-()]/g, "");
+    return {
+      href: `tel:${cleanedPhone}`,
+      label: `📞 কল করুন (${trimmed})`,
+      type: "phone",
+    };
+  };
+
   const filteredPosts = posts.filter((post) => {
     if (activeCategory === "ALL") return true;
     return post.category === activeCategory;
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 pb-28">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-955 pb-28">
       {/* Header */}
       <div className="bg-gradient-to-br from-teal-500 to-emerald-600 text-white px-6 pt-12 pb-16 rounded-b-3xl relative overflow-hidden shadow-lg shadow-teal-500/10">
         <div className="absolute inset-0 opacity-10">
@@ -208,12 +244,12 @@ export default function JobsPage() {
       <div className="max-w-lg mx-auto px-4 -mt-8 relative z-10">
         {/* Messages */}
         {error && (
-          <div className="bg-red-55 border border-red-200 text-red-650 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold">
+          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold">
             {error}
           </div>
         )}
         {success && (
-          <div className="bg-green-55 border border-green-200 text-green-650 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold shadow-sm">
+          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 text-green-600 dark:text-green-400 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold shadow-sm">
             {success}
           </div>
         )}
@@ -342,9 +378,17 @@ export default function JobsPage() {
                     {post.title}
                   </h3>
 
-                  <p className="text-xs text-gray-650 dark:text-gray-300 leading-relaxed whitespace-pre-line break-words mb-3.5 line-clamp-2">
+                  <p className="text-xs text-gray-650 dark:text-gray-300 leading-relaxed whitespace-pre-line break-words mb-2 line-clamp-2">
                     {post.description}
                   </p>
+
+                  {/* Contact Info on Card */}
+                  {post.contactInfo && (
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-3.5 flex items-center gap-1 pl-0.5">
+                      <span>📞</span>
+                      <span className="font-medium select-all">{post.contactInfo}</span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 border-t border-gray-50 dark:border-gray-750/30 pt-2.5">
                     <span>🕒 {timeAgo(post.createdAt)}</span>
@@ -417,6 +461,21 @@ export default function JobsPage() {
                   maxLength={500}
                   rows={4}
                   className="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition-all resize-none"
+                  required
+                />
+              </div>
+
+              {/* Contact Info Input */}
+              <div>
+                <label className="block text-xs font-bold text-gray-650 dark:text-gray-400 mb-1">
+                  যোগাযোগের নম্বর/ইমেইল <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.contactInfo}
+                  onChange={(e) => setForm({ ...form, contactInfo: e.target.value })}
+                  placeholder="ফোন নম্বর বা ইমেইল দিন"
+                  className="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition-all"
                   required
                 />
               </div>
@@ -514,7 +573,7 @@ export default function JobsPage() {
                     {getCategoryLabel(selectedPost.category)}
                   </span>
                   {selectedPost.profession && (
-                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border border-gray-150 dark:border-gray-700">
+                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-550 dark:text-gray-400 border border-gray-150 dark:border-gray-700">
                       🏷️ {selectedPost.profession}
                     </span>
                   )}
@@ -532,35 +591,42 @@ export default function JobsPage() {
               </div>
 
               {/* Timestamp */}
-              <div className="text-[10px] text-gray-450 dark:text-gray-550 pl-1">
+              <div className="text-[10px] text-gray-450 dark:text-gray-555 pl-1">
                 🕒 {timeAgo(selectedPost.createdAt)}
               </div>
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-2 pt-2">
-                {selectedPost.author.whatsappLink ? (
+                {/* Clickable button based on contactInfo type */}
+                {selectedPost.contactInfo && (() => {
+                  const action = getContactAction(selectedPost.contactInfo);
+                  return (
+                    <a
+                      href={action.href}
+                      className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-md shadow-teal-500/25 active:scale-95"
+                    >
+                      {action.label}
+                    </a>
+                  );
+                })()}
+
+                {/* Secondary WhatsApp Message (If Author has a WhatsApp Link configured on their profile) */}
+                {selectedPost.author.whatsappLink && (
                   <a
                     href={getWhatsAppUrl(selectedPost.author.phone, selectedPost.author.whatsappLink, selectedPost.title)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md shadow-emerald-500/25 active:scale-95"
+                    className="w-full inline-flex items-center justify-center gap-2 border-2 border-emerald-500 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold py-3 px-4 rounded-xl text-sm transition-all active:scale-95"
                   >
-                    💬 যোগাযোগ করুন (WhatsApp)
+                    💬 হোয়াটসঅ্যাপে মেসেজ (WhatsApp)
                   </a>
-                ) : selectedPost.author.phone ? (
-                  <a
-                    href={`tel:${selectedPost.author.phone}`}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md shadow-teal-500/25 active:scale-95"
-                  >
-                    📞 কল করুন ({selectedPost.author.phone})
-                  </a>
-                ) : null}
+                )}
 
                 {/* Conditional Delete Button inside modal */}
                 {((session?.user as any)?.id === selectedPost.authorId || (session?.user as any)?.role === "ADMIN") && (
                   <button
                     onClick={() => handleDelete(selectedPost.id)}
-                    className="w-full bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-650 dark:text-red-400 font-bold py-3 px-4 rounded-xl text-sm transition-all"
+                    className="w-full bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-650 dark:text-red-450 font-bold py-3 px-4 rounded-xl text-sm transition-all"
                   >
                     🗑️ পোস্ট মুছুন (Delete)
                   </button>
