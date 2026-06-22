@@ -10,6 +10,8 @@ type Author = {
   photoUrl: string | null;
   profession: string;
   professionCustom: string | null;
+  phone: string;
+  whatsappLink: string | null;
 };
 
 type JobPost = {
@@ -51,9 +53,12 @@ export default function JobsPage() {
   // Filtering
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
 
-  // Modal State
+  // Create Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Details Modal State
+  const [selectedPost, setSelectedPost] = useState<JobPost | null>(null);
 
   // Form Fields
   const [form, setForm] = useState({
@@ -132,6 +137,11 @@ export default function JobsPage() {
         throw new Error(data.error || "ডিলিট ব্যর্থ হয়েছে");
       }
 
+      // If we are deleting from the details modal, close it
+      if (selectedPost?.id === postId) {
+        setSelectedPost(null);
+      }
+
       setSuccess("পোস্টটি সফলভাবে ডিলিট হয়েছে 🗑️");
       setTimeout(() => setSuccess(""), 3000);
       fetchPosts();
@@ -153,6 +163,27 @@ export default function JobsPage() {
     if (diffHours < 24) return `${diffHours} ঘণ্টা আগে`;
     if (diffDays < 30) return `${diffDays} দিন আগে`;
     return date.toLocaleDateString("bn-BD");
+  };
+
+  const getWhatsAppUrl = (phone: string, customLink?: string | null, title?: string) => {
+    if (customLink && customLink.trim().startsWith("http")) {
+      try {
+        const url = new URL(customLink);
+        if (!url.searchParams.has("text")) {
+          url.searchParams.set("text", `আসসালামু আলাইকুম, আমি আপনার "${title || "চাকরি/সাহায্য"}" পোস্টটি দেখে যোগাযোগ করছি।`);
+        }
+        return url.toString();
+      } catch {
+        return customLink;
+      }
+    }
+
+    let cleaned = phone.replace(/\D/g, "");
+    if (cleaned.startsWith("0") && cleaned.length === 11) {
+      cleaned = "88" + cleaned;
+    }
+    const text = encodeURIComponent(`আসসালামু আলাইকুম, আমি আপনার "${title || "চাকরি/সাহায্য"}" পোস্টটি দেখে যোগাযোগ করছি।`);
+    return `https://wa.me/${cleaned}?text=${text}`;
   };
 
   const filteredPosts = posts.filter((post) => {
@@ -177,12 +208,12 @@ export default function JobsPage() {
       <div className="max-w-lg mx-auto px-4 -mt-8 relative z-10">
         {/* Messages */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold">
+          <div className="bg-red-55 border border-red-200 text-red-650 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold">
             {error}
           </div>
         )}
         {success && (
-          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 text-green-600 dark:text-green-400 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold shadow-sm">
+          <div className="bg-green-55 border border-green-200 text-green-650 p-3.5 rounded-2xl mb-4 text-center text-xs font-semibold shadow-sm">
             {success}
           </div>
         )}
@@ -249,7 +280,8 @@ export default function JobsPage() {
               return (
                 <div
                   key={post.id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 hover:border-teal-200 dark:hover:border-teal-900 transition-all duration-300 shadow-sm relative group"
+                  onClick={() => setSelectedPost(post)}
+                  className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 hover:border-teal-200 dark:hover:border-teal-900 transition-all duration-300 shadow-sm relative group cursor-pointer"
                 >
                   {/* Top user profile bar */}
                   <div className="flex items-center justify-between mb-3.5">
@@ -271,7 +303,7 @@ export default function JobsPage() {
                         <h4 className="text-xs font-bold text-gray-800 dark:text-white leading-tight">
                           {post.author.name}
                         </h4>
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                        <p className="text-[10px] text-gray-400 dark:text-gray-550 mt-0.5">
                           {post.author.professionCustom || "সদস্য"}
                         </p>
                       </div>
@@ -280,12 +312,15 @@ export default function JobsPage() {
                     {/* Delete action */}
                     {(isAuthor || isAdmin) && (
                       <button
-                        onClick={() => handleDelete(post.id)}
-                        className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-all active:scale-95"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(post.id);
+                        }}
+                        className="text-gray-450 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-all active:scale-95"
                         title="ডিলিট করুন"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     )}
@@ -297,7 +332,7 @@ export default function JobsPage() {
                       {getCategoryLabel(post.category)}
                     </span>
                     {post.profession && (
-                      <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border border-gray-150 dark:border-gray-700">
+                      <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-550 dark:text-gray-405 border border-gray-150 dark:border-gray-700">
                         🏷️ {post.profession}
                       </span>
                     )}
@@ -307,7 +342,7 @@ export default function JobsPage() {
                     {post.title}
                   </h3>
 
-                  <p className="text-xs text-gray-650 dark:text-gray-300 leading-relaxed whitespace-pre-line break-words mb-3.5">
+                  <p className="text-xs text-gray-650 dark:text-gray-300 leading-relaxed whitespace-pre-line break-words mb-3.5 line-clamp-2">
                     {post.description}
                   </p>
 
@@ -417,6 +452,129 @@ export default function JobsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Details Post Modal */}
+      {selectedPost && (
+        <div
+          onClick={() => setSelectedPost(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-br from-teal-500 to-emerald-600 text-white p-5 relative">
+              <button
+                onClick={() => setSelectedPost(null)}
+                className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+                aria-label="বন্ধ করুন"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <h3 className="text-lg font-bold flex items-center gap-2">📄 পোস্টের বিবরণ</h3>
+              <p className="text-xs text-teal-100 mt-1">বিস্তারিত পোস্ট নিচে দেওয়া হলো</p>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Author Info */}
+              <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-100 to-emerald-55 dark:from-gray-700 dark:to-gray-850 overflow-hidden flex items-center justify-center border border-teal-50 dark:border-gray-750 flex-shrink-0">
+                  {selectedPost.author.photoUrl ? (
+                    <img
+                      src={selectedPost.author.photoUrl}
+                      alt={selectedPost.author.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-lg font-bold text-teal-600 dark:text-teal-400">
+                      {selectedPost.author.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-850 dark:text-white leading-tight">
+                    {selectedPost.author.name}
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {selectedPost.author.professionCustom || selectedPost.author.profession || "সদস্য"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Title & Category Badge */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${getCategoryStyles(selectedPost.category)}`}>
+                    {getCategoryLabel(selectedPost.category)}
+                  </span>
+                  {selectedPost.profession && (
+                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border border-gray-150 dark:border-gray-700">
+                      🏷️ {selectedPost.profession}
+                    </span>
+                  )}
+                </div>
+                <h2 className="font-extrabold text-gray-900 dark:text-white text-base leading-snug break-words">
+                  {selectedPost.title}
+                </h2>
+              </div>
+
+              {/* Description */}
+              <div className="bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-750/30">
+                <p className="text-xs text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line break-words">
+                  {selectedPost.description}
+                </p>
+              </div>
+
+              {/* Timestamp */}
+              <div className="text-[10px] text-gray-450 dark:text-gray-550 pl-1">
+                🕒 {timeAgo(selectedPost.createdAt)}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 pt-2">
+                {selectedPost.author.whatsappLink ? (
+                  <a
+                    href={getWhatsAppUrl(selectedPost.author.phone, selectedPost.author.whatsappLink, selectedPost.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md shadow-emerald-500/25 active:scale-95"
+                  >
+                    💬 যোগাযোগ করুন (WhatsApp)
+                  </a>
+                ) : selectedPost.author.phone ? (
+                  <a
+                    href={`tel:${selectedPost.author.phone}`}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md shadow-teal-500/25 active:scale-95"
+                  >
+                    📞 কল করুন ({selectedPost.author.phone})
+                  </a>
+                ) : null}
+
+                {/* Conditional Delete Button inside modal */}
+                {((session?.user as any)?.id === selectedPost.authorId || (session?.user as any)?.role === "ADMIN") && (
+                  <button
+                    onClick={() => handleDelete(selectedPost.id)}
+                    className="w-full bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-650 dark:text-red-400 font-bold py-3 px-4 rounded-xl text-sm transition-all"
+                  >
+                    🗑️ পোস্ট মুছুন (Delete)
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPost(null)}
+                  className="w-full border border-gray-200 dark:border-gray-600 text-gray-650 dark:text-gray-300 font-semibold py-3 px-4 rounded-xl text-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-750"
+                >
+                  বন্ধ করুন
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
